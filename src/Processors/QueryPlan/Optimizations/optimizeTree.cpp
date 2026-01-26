@@ -1,3 +1,4 @@
+#include <IO/WriteBufferFromString.h>
 #include <Interpreters/Context.h>
 #include <Processors/QueryPlan/CreatingSetsStep.h>
 #include <Processors/QueryPlan/ExpressionStep.h>
@@ -8,6 +9,7 @@
 #include <Processors/QueryPlan/Optimizations/Optimizations.h>
 #include <Processors/QueryPlan/Optimizations/QueryPlanOptimizationSettings.h>
 #include <Processors/QueryPlan/Optimizations/RuntimeDataflowStatistics.h>
+#include <Processors/QueryPlan/QueryPlan.h>
 #include <Processors/QueryPlan/ReadFromLocalReplica.h>
 #include <Processors/QueryPlan/ReadFromMergeTree.h>
 #include <Processors/QueryPlan/ReadFromRemote.h>
@@ -360,10 +362,7 @@ static ReadFromMergeTree * findReadingStep(const QueryPlan::Node & top_of_single
 
 /// Heuristic-based algorithm to decide whether to enable parallel replicas for the given query
 void considerEnablingParallelReplicas(
-     const QueryPlanOptimizationSettings & optimization_settings,
-     QueryPlan::Node & root,
-     QueryPlan::Nodes &,
-     QueryPlan & query_plan)
+    const QueryPlanOptimizationSettings & optimization_settings, QueryPlan::Node & root, QueryPlan::Nodes &, QueryPlan & query_plan, bool &)
 {
     if (!optimization_settings.automatic_parallel_replicas_mode
         || !optimization_settings.query_plan_with_parallel_replicas_builder
@@ -383,14 +382,14 @@ void considerEnablingParallelReplicas(
     // but only for those that we will actually instrument (see `setRuntimeDataflowStatisticsCacheUpdater` calls below).
     // However, currently only relatively simple plans are supported (no JOINs, CreatingSets from subqueries, UNIONs, etc.),
     // since all these steps obviously don't support statistics collection, `supportsDataflowStatisticsCollection` is handy to check if the plan is simple enough.
-    bool plan_is_simple_enough = true;
-    traverseQueryPlan(
-        stack, root, [&](auto & frame_node) { plan_is_simple_enough &= frame_node.step->supportsDataflowStatisticsCollection(); });
-    if (!plan_is_simple_enough)
-    {
-        LOG_DEBUG(getLogger("optimizeTree"), "Some steps in the plan don't support dataflow statistics collection. Skipping optimization");
-        return;
-    }
+    // bool plan_is_simple_enough = true;
+    // traverseQueryPlan(
+    //     stack, root, [&](auto & frame_node) { plan_is_simple_enough &= frame_node.step->supportsDataflowStatisticsCollection(); });
+    // if (!plan_is_simple_enough)
+    // {
+    //     LOG_DEBUG(getLogger("optimizeTree"), "Some steps in the plan don't support dataflow statistics collection. Skipping optimization");
+    //     return;
+    // }
 
     auto plan_with_parallel_replicas = optimization_settings.query_plan_with_parallel_replicas_builder();
     if (!plan_with_parallel_replicas)
@@ -477,11 +476,20 @@ void considerEnablingParallelReplicas(
                     return;
                 }
 
-                ReadFromMergeTree * local_plan_reading_step = findReadingStep(*final_node_in_replica_plan);
-                if (!local_plan_reading_step)
+                auto dump = [&](const QueryPlan & plan)
+                {
+                    WriteBufferFromOwnString wb;
+                    plan.explainPlan(wb, ExplainPlanOptions{});
+                    LOG_DEBUG(&Poco::Logger::get("debug"), "query plan={}", wb.str());
+                };
+
+                dump(query_plan);
+                dump(*plan_with_parallel_replicas);
+                ReadFromMergeTree * local_replica_plan_reading_step = findReadingStep(*final_node_in_replica_plan);
+                if (!local_replica_plan_reading_step)
                     throw Exception(ErrorCodes::LOGICAL_ERROR, "Cannot find ReadFromMergeTree step in local parallel replicas plan");
-                chassert(local_plan_reading_step->getAnalyzedResult() == nullptr);
-                local_plan_reading_step->setAnalyzedResult(analysis);
+                chassert(local_replica_plan_reading_step->getAnalyzedResult() == nullptr);
+                local_replica_plan_reading_step->setAnalyzedResult(analysis);
                 query_plan.replaceNodeWithPlan(query_plan.getRootNode(), std::move(*plan_with_parallel_replicas));
                 return;
             }
@@ -504,7 +512,7 @@ void considerEnablingParallelReplicas(
 
 
 void optimizeTreeSecondPass(
-    const QueryPlanOptimizationSettings & optimization_settings, QueryPlan::Node & root, QueryPlan::Nodes & nodes, QueryPlan & query_plan)
+    QueryPlanOptimizationSettings & optimization_settings, QueryPlan::Node & root, QueryPlan::Nodes & nodes, QueryPlan & query_plan)
 {
     const size_t max_optimizations_to_apply = optimization_settings.max_optimizations_to_apply;
     std::unordered_set<String> applied_projection_names;
@@ -528,7 +536,8 @@ void optimizeTreeSecondPass(
 
     while (!stack.empty())
     {
-        optimizePrimaryKeyConditionAndLimit(stack);
+        if (optimization_settings.query_plan_optimize_primary_key)
+            optimizePrimaryKeyConditionAndLimit(stack);
 
         updateQueryConditionCache(stack, optimization_settings);
 
@@ -820,7 +829,7 @@ void optimizeTreeSecondPass(
     if (optimization_settings.query_plan_join_shard_by_pk_ranges)
         optimizeJoinByShards(root);
 
-    considerEnablingParallelReplicas(optimization_settings, root, nodes, query_plan);
+    considerEnablingParallelReplicas(optimization_settings, root, nodes, query_plan, optimization_settings.build_sets);
 }
 
 void addStepsToBuildSets(

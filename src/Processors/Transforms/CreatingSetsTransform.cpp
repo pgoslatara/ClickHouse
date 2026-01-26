@@ -10,6 +10,10 @@
 #include <Common/Exception.h>
 #include <Common/logger_useful.h>
 
+#include <Poco/Logger.h>
+#include <Common/StackTrace.h>
+#include <Common/logger_useful.h>
+
 #include <exception>
 
 
@@ -101,6 +105,14 @@ void CreatingSetsTransform::work()
 
 void CreatingSetsTransform::startSubquery()
 {
+    // LOG_DEBUG(
+    //     &Poco::Logger::get("debug"),
+    //     "__PRETTY_FUNCTION__={}, __LINE__={}, stack={}",
+    //     __PRETTY_FUNCTION__,
+    //     __LINE__,
+    //     StackTrace().toString());
+
+    LOG_DEBUG(&Poco::Logger::get("debug"), "!!prepared_sets_cache={}", !!prepared_sets_cache);
     /// Lookup the set in the cache if we don't need to build table.
     if (prepared_sets_cache && !set_and_key->external_table)
     {

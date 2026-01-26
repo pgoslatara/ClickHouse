@@ -2057,6 +2057,12 @@ ReadFromMergeTree::AnalysisResultPtr ReadFromMergeTree::selectRangesToRead(
     bool is_parallel_reading_from_replicas_,
     bool allow_query_condition_cache_)
 {
+    LOG_DEBUG(
+        &Poco::Logger::get("debug"),
+        "__PRETTY_FUNCTION__={}, __LINE__={}, stack={}",
+        __PRETTY_FUNCTION__,
+        __LINE__,
+        StackTrace().toString());
     ProfileEvents::increment(ProfileEvents::IndexAnalysisRounds);
 
     AnalysisResult result;

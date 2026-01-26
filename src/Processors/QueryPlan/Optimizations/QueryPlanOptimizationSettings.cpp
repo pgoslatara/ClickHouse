@@ -1,7 +1,8 @@
-#include <Processors/QueryPlan/Optimizations/QueryPlanOptimizationSettings.h>
-#include <Core/Settings.h>
 #include <Core/ServerSettings.h>
+#include <Core/Settings.h>
 #include <Interpreters/Context.h>
+#include <Interpreters/PreparedSets.h>
+#include <Processors/QueryPlan/Optimizations/QueryPlanOptimizationSettings.h>
 
 namespace DB
 {
@@ -90,6 +91,7 @@ namespace Setting
     extern const SettingsUInt64 query_plan_optimize_join_order_limit;
     extern const SettingsUInt64 use_index_for_in_with_subqueries_max_values;
     extern const SettingsVectorSearchFilterStrategy vector_search_filter_strategy;
+    extern const SettingsBool query_plan_optimize_primary_key;
 }
 
 namespace ServerSetting
@@ -227,6 +229,8 @@ QueryPlanOptimizationSettings::QueryPlanOptimizationSettings(
     max_parallel_replicas = from[Setting::max_parallel_replicas];
     automatic_parallel_replicas_mode = from[Setting::automatic_parallel_replicas_mode];
     automatic_parallel_replicas_min_bytes_per_replica = from[Setting::automatic_parallel_replicas_min_bytes_per_replica];
+
+    query_plan_optimize_primary_key = from[Setting::query_plan_optimize_primary_key];
 }
 
 QueryPlanOptimizationSettings::QueryPlanOptimizationSettings(ContextPtr from)
