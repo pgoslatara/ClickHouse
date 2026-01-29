@@ -463,7 +463,7 @@ void considerEnablingParallelReplicas(
     const auto & stats_cache = getRuntimeDataflowStatisticsCache();
     if (const auto stats = stats_cache.getStats(single_replica_plan_node_hash))
     {
-        bool dont_apply_plan_with_parallel_replicas = optimization_settings.automatic_parallel_replicas_mode == 2;
+        bool apply_plan_with_parallel_replicas = optimization_settings.automatic_parallel_replicas_mode != 2;
         if (std::max<size_t>(stats->total_rows_to_read, rows_to_read) > std::min<size_t>(stats->total_rows_to_read, rows_to_read) * 2)
         {
             LOG_DEBUG(
@@ -471,14 +471,14 @@ void considerEnablingParallelReplicas(
                 "Significant difference in total rows from storage detected (previously {}, now {}). Recollecting statistics",
                 stats->total_rows_to_read,
                 rows_to_read);
-            dont_apply_plan_with_parallel_replicas = true;
+            apply_plan_with_parallel_replicas = false;
         }
         else
         {
             table_data_drifted_significantly = false;
         }
 
-        if (!dont_apply_plan_with_parallel_replicas)
+        if (apply_plan_with_parallel_replicas)
         {
             const auto max_threads = optimization_settings.max_threads;
             const auto num_replicas = optimization_settings.max_parallel_replicas;
