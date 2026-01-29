@@ -490,6 +490,48 @@ void considerEnablingParallelReplicas(
                     throw Exception(ErrorCodes::LOGICAL_ERROR, "Cannot find ReadFromMergeTree step in local parallel replicas plan");
                 chassert(local_replica_plan_reading_step->getAnalyzedResult() == nullptr);
                 local_replica_plan_reading_step->setAnalyzedResult(analysis);
+
+                // Transplant the sets from the single-replica plan to the parallel-replicas plan
+                std::map<FutureSet::Hash, SetPtr> sets_map;
+
+                // Create a map: set_key -> set
+                {
+                    stack.clear();
+                    traverseQueryPlan(
+                        stack,
+                        *query_plan.getRootNode(),
+                        [&](auto & frame_node)
+                        {
+                            if (auto * creating_sets_step = typeid_cast<DelayedCreatingSetsStep *>(frame_node.step.get()))
+                            {
+                                for (const auto & future_set : creating_sets_step->getSets())
+                                {
+                                    if (const auto set = future_set->get())
+                                        sets_map[future_set->getHash()] = set;
+                                }
+                            }
+                        });
+                }
+
+                // Now transplant the sets
+                {
+                    stack.clear();
+                    traverseQueryPlan(
+                        stack,
+                        *plan_with_parallel_replicas->getRootNode(),
+                        [&](auto & frame_node)
+                        {
+                            if (auto * creating_sets_step = typeid_cast<DelayedCreatingSetsStep *>(frame_node.step.get()))
+                            {
+                                for (auto & future_set : creating_sets_step->getSets())
+                                {
+                                    if (auto it = sets_map.find(future_set->getHash()); it != sets_map.end())
+                                        future_set->set(it->second);
+                                }
+                            }
+                        });
+                }
+
                 query_plan.replaceNodeWithPlan(query_plan.getRootNode(), std::move(*plan_with_parallel_replicas));
                 return;
             }

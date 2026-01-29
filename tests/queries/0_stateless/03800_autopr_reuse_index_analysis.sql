@@ -26,7 +26,7 @@ insert into t select number from numbers(1000000);
 -- Pre-warm the cache
 SELECT sum(length(URL)) FROM test.hits WHERE CounterID IN (SELECT a % 100000 FROM t) FORMAT Null;
 
-set send_logs_level='trace', send_logs_source_regexp='';
+--set send_logs_level='trace', send_logs_source_regexp='';
 SELECT sum(length(URL)) FROM test.hits WHERE CounterID IN (SELECT a % 100000 FROM t) FORMAT Null SETTINGS log_comment='query_3';
 set send_logs_level='none', send_logs_source_regexp='';
 
@@ -36,5 +36,6 @@ SYSTEM FLUSH LOGS query_log;
 
 SELECT ProfileEvents['IndexAnalysisRounds'] index_analysis_rounds
 FROM system.query_log
-WHERE (event_date >= yesterday()) AND (event_time >= (NOW() - toIntervalMinute(15))) AND (current_database = currentDatabase()) AND (log_comment LIKE 'query_%') AND (type = 'QueryFinish');
+WHERE (event_date >= yesterday()) AND (event_time >= (NOW() - toIntervalMinute(15))) AND (current_database = currentDatabase()) AND (log_comment LIKE 'query_%') AND (type = 'QueryFinish')
+ORDER BY event_time_microseconds;
 

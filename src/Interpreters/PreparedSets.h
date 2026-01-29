@@ -148,6 +148,7 @@ public:
 
     ~FutureSetFromSubquery() override;
 
+    void set(SetPtr set) const;
     SetPtr get() const override;
     DataTypes getTypes() const override;
     Hash getHash() const override;

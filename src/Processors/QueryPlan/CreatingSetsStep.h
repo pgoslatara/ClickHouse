@@ -74,6 +74,7 @@ public:
     SizeLimits getNetworkTransferLimits() const { return network_transfer_limits; }
     PreparedSetsCachePtr getPreparedSetsCache() const { return prepared_sets_cache; }
 
+    PreparedSets::Subqueries & getSets() { return subqueries; }
     const PreparedSets::Subqueries & getSets() const { return subqueries; }
     PreparedSets::Subqueries detachSets() { return std::move(subqueries); }
 

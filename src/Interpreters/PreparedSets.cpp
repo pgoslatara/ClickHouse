@@ -182,6 +182,11 @@ FutureSetFromSubquery::FutureSetFromSubquery(
 
 FutureSetFromSubquery::~FutureSetFromSubquery() = default;
 
+void FutureSetFromSubquery::set(SetPtr set) const
+{
+    set_and_key->set = std::move(set);
+}
+
 SetPtr FutureSetFromSubquery::get() const
 {
     if (set_and_key->set != nullptr && set_and_key->set->isCreated())

@@ -1200,10 +1200,7 @@ void ContextData::resetSharedContext()
     shared = nullptr;
 }
 
-Context::Context()
-{
-    prepared_sets_cache = std::make_shared<PreparedSetsCache>();
-}
+Context::Context() = default;
 Context::Context(const Context & rhs) : ContextData(rhs), std::enable_shared_from_this<Context>(rhs) {}
 
 SharedContextHolder::SharedContextHolder(SharedContextHolder &&) noexcept = default;
