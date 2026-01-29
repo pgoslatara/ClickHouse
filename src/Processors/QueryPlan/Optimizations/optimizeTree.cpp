@@ -364,18 +364,36 @@ static ReadFromMergeTree * findReadingStep(const QueryPlan::Node & top_of_single
 void considerEnablingParallelReplicas(
     const QueryPlanOptimizationSettings & optimization_settings, QueryPlan::Node & root, QueryPlan::Nodes &, QueryPlan & query_plan, bool &)
 {
+    LOG_DEBUG(&Poco::Logger::get("debug"), "__PRETTY_FUNCTION__={}, __LINE__={}", __PRETTY_FUNCTION__, __LINE__);
+
     if (!optimization_settings.automatic_parallel_replicas_mode
         || !optimization_settings.query_plan_with_parallel_replicas_builder
         || optimization_settings.parallel_replicas_enabled)
+    {
+        LOG_DEBUG(
+            &Poco::Logger::get("debug"),
+            "optimization_settings.automatic_parallel_replicas_mode={}, "
+            "!!optimization_settings.query_plan_with_parallel_replicas_builder={}, optimization_settings.parallel_replicas_enabled);={}",
+            optimization_settings.automatic_parallel_replicas_mode,
+            !!optimization_settings.query_plan_with_parallel_replicas_builder,
+            optimization_settings.parallel_replicas_enabled);
+        LOG_DEBUG(&Poco::Logger::get("debug"), "__PRETTY_FUNCTION__={}, __LINE__={}", __PRETTY_FUNCTION__, __LINE__);
         return;
+    }
 
     // Cannot guarantee projection usage with parallel replicas
     if (optimization_settings.force_use_projection)
+    {
+        LOG_DEBUG(&Poco::Logger::get("debug"), "__PRETTY_FUNCTION__={}, __LINE__={}", __PRETTY_FUNCTION__, __LINE__);
         return;
+    }
 
     // Some tests fail because on uninitialized `MergeTreeData::SnapshotData`
     if (optimization_settings.enable_full_text_index)
+    {
+        LOG_DEBUG(&Poco::Logger::get("debug"), "__PRETTY_FUNCTION__={}, __LINE__={}", __PRETTY_FUNCTION__, __LINE__);
         return;
+    }
 
     Stack stack;
     // Technically, it isn't required for all steps to support dataflow statistics collection,
@@ -393,11 +411,17 @@ void considerEnablingParallelReplicas(
 
     auto plan_with_parallel_replicas = optimization_settings.query_plan_with_parallel_replicas_builder();
     if (!plan_with_parallel_replicas)
+    {
+        LOG_DEBUG(&Poco::Logger::get("debug"), "__PRETTY_FUNCTION__={}, __LINE__={}", __PRETTY_FUNCTION__, __LINE__);
         return;
+    }
 
     const auto * final_node_in_replica_plan = findTopNodeOfReplicasPlan(plan_with_parallel_replicas->getRootNode());
     if (!final_node_in_replica_plan)
+    {
+        LOG_DEBUG(&Poco::Logger::get("debug"), "__PRETTY_FUNCTION__={}, __LINE__={}", __PRETTY_FUNCTION__, __LINE__);
         return;
+    }
     LOG_DEBUG(getLogger("optimizeTree"), "Top node of replicas plan: {}", final_node_in_replica_plan->step->getName());
 
     const auto [corresponding_node_in_single_replica_plan, single_replica_plan_node_hash]
@@ -423,6 +447,16 @@ void considerEnablingParallelReplicas(
         LOG_DEBUG(getLogger("optimizeTree"), "Index analysis result doesn't contain selected rows. Skipping optimization");
         return;
     }
+
+    auto dump = [&](const QueryPlan & plan)
+    {
+        WriteBufferFromOwnString wb;
+        plan.explainPlan(wb, ExplainPlanOptions{});
+        LOG_DEBUG(&Poco::Logger::get("debug"), "query plan={}", wb.str());
+    };
+
+    dump(query_plan);
+    dump(*plan_with_parallel_replicas);
 
     bool table_data_drifted_significantly = true;
 
@@ -476,15 +510,6 @@ void considerEnablingParallelReplicas(
                     return;
                 }
 
-                auto dump = [&](const QueryPlan & plan)
-                {
-                    WriteBufferFromOwnString wb;
-                    plan.explainPlan(wb, ExplainPlanOptions{});
-                    LOG_DEBUG(&Poco::Logger::get("debug"), "query plan={}", wb.str());
-                };
-
-                dump(query_plan);
-                dump(*plan_with_parallel_replicas);
                 ReadFromMergeTree * local_replica_plan_reading_step = findReadingStep(*final_node_in_replica_plan);
                 if (!local_replica_plan_reading_step)
                     throw Exception(ErrorCodes::LOGICAL_ERROR, "Cannot find ReadFromMergeTree step in local parallel replicas plan");

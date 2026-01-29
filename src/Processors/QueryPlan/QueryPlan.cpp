@@ -177,9 +177,14 @@ QueryPipelineBuilderPtr QueryPlan::buildQueryPipeline(
     const BuildQueryPipelineSettings & build_pipeline_settings,
     bool do_optimize)
 {
+    LOG_DEBUG(&Poco::Logger::get("debug"), "__PRETTY_FUNCTION__={}, __LINE__={}", __PRETTY_FUNCTION__, __LINE__);
     checkInitialized();
     if (do_optimize)
+    {
+        LOG_DEBUG(&Poco::Logger::get("debug"), "__PRETTY_FUNCTION__={}, __LINE__={}", __PRETTY_FUNCTION__, __LINE__);
         optimize(optimization_settings);
+        LOG_DEBUG(&Poco::Logger::get("debug"), "__PRETTY_FUNCTION__={}, __LINE__={}", __PRETTY_FUNCTION__, __LINE__);
+    }
 
     struct Frame
     {
