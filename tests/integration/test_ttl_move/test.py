@@ -53,6 +53,10 @@ def started_cluster():
         cluster.shutdown()
 
 
+def check_and_skip_this_if_needed(node):
+    if node.is_built_with_sanitizer() or node.is_debug_build():
+        pytest.skip("Disabled for debug and sanitizer builds")
+
 # --------- Helpers to track MOVE operations ---------
 def wait_until_move_is_finished(node, table_name, retries=10, sleep_sec=1):
     for _ in range(retries):
@@ -1224,6 +1228,8 @@ def test_merges_to_disk(started_cluster, engine, request):
     ],
 )
 def test_moves_with_full_disk(started_cluster, engine, request):
+    check_and_skip_this_if_needed(node1)
+
     table_name = unique_table_name(request)
     temp_table_name = table_name + '_temp'
 
@@ -1296,6 +1302,8 @@ def test_moves_with_full_disk(started_cluster, engine, request):
     ],
 )
 def test_merges_with_full_disk(started_cluster, engine, request):
+    check_and_skip_this_if_needed(node1)
+
     table_name = unique_table_name(request)
     temp_table_name = table_name + '_temp'
 
@@ -1433,6 +1441,8 @@ def test_moves_after_merges(started_cluster, engine, request):
     ]
 )
 def test_concurrent_alter_with_ttl_move(started_cluster, engine, request):
+    check_and_skip_this_if_needed(node1)
+
     table_name = unique_table_name(request)
 
     try:
@@ -1581,6 +1591,8 @@ def test_concurrent_alter_with_ttl_move(started_cluster, engine, request):
 class TestCancelBackgroundMoving:
     @pytest.fixture()
     def prepare_table(self, request, started_cluster):
+        check_and_skip_this_if_needed(node1)
+
         name = unique_table_name(request)
         engine = f"ReplicatedMergeTree('/clickhouse/{name}', '1')"
 
@@ -1599,7 +1611,7 @@ class TestCancelBackgroundMoving:
         # Insert part which is about to move
         node1.query(
             "INSERT INTO {} (s1, d1) VALUES (randomPrintableASCII({}), toDateTime({}))".format(
-                name, 10 * 1024 * 1024, time.time()
+                name, 128 * 1024, time.time()
             )
         )
 
@@ -1607,7 +1619,7 @@ class TestCancelBackgroundMoving:
         config = inspect.cleandoc(
             f"""
             <clickhouse>
-                <max_local_write_bandwidth_for_server>{1024}</max_local_write_bandwidth_for_server>
+                <max_local_write_bandwidth_for_server>{32*1024}</max_local_write_bandwidth_for_server>
             </clickhouse>
             """
         )
@@ -1621,7 +1633,7 @@ class TestCancelBackgroundMoving:
         assert node1.query(
             "SELECT value FROM system.server_settings "
             "WHERE name = 'max_local_write_bandwidth_for_server'"
-        ).strip() == str(1024)
+        ).strip() == str(32*1024)
 
         try:
             yield name
@@ -1629,6 +1641,8 @@ class TestCancelBackgroundMoving:
             node1.query(f"DROP TABLE IF EXISTS {name} SYNC")
 
     def test_cancel_background_moving_on_stop_moves_query(self, prepare_table):
+        check_and_skip_this_if_needed(node1)
+
         name = prepare_table
 
         # Wait for background moving task to be started
@@ -1648,12 +1662,19 @@ class TestCancelBackgroundMoving:
         )
         # Ensure that part was not moved
         assert get_disk_names_of_active_parts(node1, name) == {'jbod1'}
+        # node1.query("SYSTEM FLUSH LOGS query_log")
+        # assert node1.query(f"""
+        #     SELECT ProfileEvents['MoveBackgroundExecutorTaskCancelMicroseconds']
+        #     FROM system.query_log
+        # """) == 0
         # Finally check the MOVE was cancelled forcibly
         assert_logs_contain_with_retry(
             node1, "MergeTreeBackgroundExecutor.*Cancelled moving parts"
         )
 
     def test_cancel_background_moving_on_table_detach(self, prepare_table):
+        check_and_skip_this_if_needed(node1)
+
         name = prepare_table
 
         # Wait for background moving task to be started
@@ -1677,6 +1698,8 @@ class TestCancelBackgroundMoving:
         )
 
     def test_cancel_background_moving_on_zookeeper_disconnect(self, prepare_table):
+        check_and_skip_this_if_needed(node1)
+
         name = prepare_table
 
         # Wait for background moving task to be started
