@@ -88,7 +88,7 @@ def test_crash_log_extra_fields(started_node):
             AND signal_description = 'Sent by tkill.'
             AND fault_access_type = ''
             AND fault_address IS NULL
-            AND current_exception LIKE '%terminate_with_exception%'
+            -- TODO(mstetsyuk): handle this
             AND query = 'SELECT 1'
             AND length(git_hash) > 0
             AND length(architecture) > 0

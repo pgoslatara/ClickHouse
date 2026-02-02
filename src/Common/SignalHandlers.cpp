@@ -4,6 +4,7 @@
 #include <Common/ShellCommandsHolder.h>
 #include <Common/CurrentThread.h>
 #include <Common/SymbolIndex.h>
+#include <Common/FramePointers.h>
 #include <Daemon/BaseDaemon.h>
 #include <Daemon/CrashWriter.h>
 #include <base/sleep.h>
@@ -35,8 +36,9 @@ extern const char * GIT_HASH;
 
 static const std::vector<FramePointers> empty_stack;
 
-/// Current exception message captured in terminate_handler.
-thread_local std::string terminate_current_exception_message;
+/// Current exception stack trace captured in terminate_handler.
+thread_local FramePointers terminate_current_exception_trace;
+thread_local size_t terminate_current_exception_trace_size = 0;
 
 using namespace DB;
 
@@ -121,7 +123,9 @@ static void signalHandler(int sig, siginfo_t * info, void * context)
     writeVectorBinary(Exception::enable_job_stack_trace ? Exception::getThreadFramePointers() : empty_stack, out);
     writeBinary(static_cast<UInt32>(getThreadId()), out);
     writePODBinary(current_thread, out);
-    writeBinary(terminate_current_exception_message, out);
+    writeBinary(static_cast<UInt8>(terminate_current_exception_trace_size), out);
+    for (size_t i = 0; i < terminate_current_exception_trace_size; ++i)
+        writePODBinary(terminate_current_exception_trace[i], out);
     out.finalize();
 
     if (sig != SIGTSTP) /// This signal is used for debugging.
@@ -159,12 +163,20 @@ static void signalHandler(int sig, siginfo_t * info, void * context)
 
     if (std::current_exception())
     {
-        terminate_current_exception_message = getCurrentExceptionMessage(true);
-        log_message = "Terminate called for uncaught exception:\n" + terminate_current_exception_message;
+        std::string exception_message = getCurrentExceptionMessage(true);
+        log_message = "Terminate called for uncaught exception:\n" + exception_message;
+
+        StackTrace stack_trace;
+        size_t stack_trace_size = stack_trace.getSize();
+        size_t stack_trace_offset = stack_trace.getOffset();
+        terminate_current_exception_trace_size = std::min(stack_trace_size - stack_trace_offset, FRAMEPOINTER_CAPACITY);
+        for (size_t i = 0; i < terminate_current_exception_trace_size; ++i)
+            terminate_current_exception_trace[i] = stack_trace.getFramePointers()[stack_trace_offset + i];
     }
     else
     {
         log_message = "Terminate called without an active exception";
+        terminate_current_exception_trace_size = 0;
     }
 
     /// POSIX.1 says that write(2)s of less than PIPE_BUF bytes must be atomic - man 7 pipe
@@ -338,7 +350,8 @@ void SignalListener::run()
             std::vector<FramePointers> thread_frame_pointers;
             UInt32 thread_num{};
             ThreadStatus * thread_ptr{};
-            std::string exception_message;
+            FramePointers exception_trace{};
+            UInt8 exception_trace_size{};
 
             readPODBinary(info, in);
             readPODBinary(context, in);
@@ -347,9 +360,11 @@ void SignalListener::run()
             readVectorBinary(thread_frame_pointers, in);
             readBinary(thread_num, in);
             readPODBinary(thread_ptr, in);
-            readBinary(exception_message, in);
+            readBinary(exception_trace_size, in);
+            for (size_t i = 0; i < exception_trace_size; ++i)
+                readPODBinary(exception_trace[i], in);
 
-            onFault(sig, info, context, stack_trace, thread_frame_pointers, thread_num, thread_ptr, exception_message);
+            onFault(sig, info, context, stack_trace, thread_frame_pointers, thread_num, thread_ptr, exception_trace, exception_trace_size);
         }
     }
 }
@@ -383,7 +398,8 @@ void SignalListener::onFault(
     const std::vector<FramePointers> & thread_frame_pointers,
     UInt32 thread_num,
     DB::ThreadStatus * thread_ptr,
-    const std::string & exception_message) const
+    const FramePointers & exception_trace,
+    size_t exception_trace_size) const
 try
 {
     ThreadStatus thread_status;
@@ -540,7 +556,7 @@ try
         collectCrashLog(
             sig, info.si_code, thread_num, query_id, query,
             stack_trace, fault_address, fault_access_type, si_code_description,
-            exception_message);
+            exception_trace, exception_trace_size);
     }
 
     Context::getGlobalContextInstance()->handleCrash();
