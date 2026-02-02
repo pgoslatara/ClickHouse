@@ -227,7 +227,7 @@ Setting [`splitby_max_substrings_includes_remaining_string`](../../operations/se
 )";
     FunctionDocumentation::Syntax syntax = "splitByRegexp(regexp, s[, max_substrings])";
     FunctionDocumentation::Arguments arguments = {
-        {"regexp", "Regular expression. Constant.", {"String", "FixedString", "Nullable(String)", "Nullable(FixedString)"}},
+        {"regexp", "Regular expression. Constant.", {"String", "FixedString"}},
         {"s", "The string to split.", {"String"}},
         {"max_substrings", "Optional. When `max_substrings > 0`, the returned substrings will be no more than `max_substrings`, otherwise the function will return as many substrings as possible. Default value: `0`.", {"Int64"}}
     };

@@ -293,7 +293,7 @@ tokens(value, 'sparseGrams'[, min_length, max_length[, min_cutoff_length]])
 tokens(value, 'array')
 )";
     FunctionDocumentation::Arguments arguments = {
-        {"value", "The input string.", {"String", "FixedString", "Nullable(String)", "Nullable(FixedString)"}},
+        {"value", "The input string.", {"String", "FixedString"}},
         {"tokenizer", "The tokenizer to use. Valid arguments are `splitByNonAlpha`, `ngrams`, `splitByString`, `array`, and `sparseGrams`. Optional, if not set explicitly, defaults to `splitByNonAlpha`.", {"const String"}},
         {"n", "Only relevant if argument `tokenizer` is `ngrams`: An optional parameter which defines the length of the ngrams. If not set explicitly, defaults to `3`.", {"const UInt8"}},
         {"separators", "Only relevant if argument `tokenizer` is `split`: An optional parameter which defines the separator strings. If not set explicitly, defaults to `[' ']`.", {"const Array(String)"}},

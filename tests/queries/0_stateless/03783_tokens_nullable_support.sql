@@ -1,63 +1,61 @@
 -- Test nullable support for tokens() function
 
--- Test basic nullable string
-SELECT tokens(CAST('hello world' AS Nullable(String)));
-
--- Test NULL value
+SELECT '-- Test basic nullable string';
+SELECT tokens(toNullable('hello world'));
+SELECT tokens(materialize(toNullable('hello world')));
 SELECT tokens(CAST(NULL AS Nullable(String)));
+SELECT tokens(toNullable(NULL)); -- { serverError ILLEGAL_TYPE_OF_ARGUMENT }
 
--- Test with table containing nullable column
-DROP TABLE IF EXISTS test_tokens_nullable;
-CREATE TABLE test_tokens_nullable (id UInt32, text Nullable(String)) ENGINE = Memory;
-INSERT INTO test_tokens_nullable VALUES (1, 'foo bar'), (2, NULL), (3, 'test data');
-
-SELECT id, tokens(text) FROM test_tokens_nullable ORDER BY id;
-
-DROP TABLE test_tokens_nullable;
-
--- Test with different tokenizers
-SELECT tokens(CAST('abc def' AS Nullable(String)), 'ngrams', 3);
-
+SELECT '-- Test with different tokenizer';
+SELECT tokens(toNullable('abc def'), 'ngrams', 3);
 SELECT tokens(CAST(NULL AS Nullable(String)), 'ngrams', 3);
+SELECT tokens(toNullable(NULL), 'ngrams', 3); -- { serverError ILLEGAL_TYPE_OF_ARGUMENT }
 
--- Test with FixedString nullable variant
-SELECT tokens(CAST('test' AS Nullable(FixedString(10))));
+SELECT '-- Test with FixedString nullable variant';
+SELECT tokens(toNullable(toFixedString('test', 10)));
+SELECT tokens(toNullable(NULL)); -- { serverError ILLEGAL_TYPE_OF_ARGUMENT }
 
-SELECT tokens(CAST(NULL AS Nullable(FixedString(10))));
-
--- Test alphaTokens with nullable
-SELECT alphaTokens(CAST('abc123def456' AS Nullable(String)));
+SELECT '-- Test alphaTokens with nullable';
+SELECT alphaTokens(toNullable('abc123def456'));
 SELECT alphaTokens(CAST(NULL AS Nullable(String)));
+SELECT alphaTokens(toNullable(NULL)); -- { serverError ILLEGAL_TYPE_OF_ARGUMENT }
 
--- Test arrayStringConcat with nullable array elements
-SELECT arrayStringConcat(CAST(['hello', 'world'] AS Array(Nullable(String))));
-SELECT arrayStringConcat(CAST(['hello', NULL, 'world'] AS Array(Nullable(String))));
-SELECT arrayStringConcat(CAST(['hello', NULL, 'world'] AS Array(Nullable(String))), ', ');
+SELECT '-- Test arrayStringConcat with nullable array elements';
+SELECT arrayStringConcat([toNullable('hello'), toNullable('world')]);
+SELECT arrayStringConcat([toNullable('hello'), NULL, toNullable('world')]);
+SELECT arrayStringConcat([toNullable('hello'), NULL, toNullable('world')], ', ');
 
--- Test extractAllGroupsVertical with nullable
-SELECT extractAllGroupsVertical(CAST('abc=111, def=222' AS Nullable(String)), '(\\w+)=(\\w+)');
+SELECT '-- Test extractAllGroupsVertical with nullable';
+SELECT extractAllGroupsVertical(toNullable('abc=111, def=222'), '(\\w+)=(\\w+)');
 SELECT extractAllGroupsVertical(CAST(NULL AS Nullable(String)), '(\\w+)=(\\w+)');
+SELECT extractAllGroupsVertical(toNullable(NULL), '(\\w+)=(\\w+)'); -- { serverError ILLEGAL_TYPE_OF_ARGUMENT }
 
--- Test ngrams with nullable
-SELECT ngrams(CAST('ClickHouse' AS Nullable(String)), 3);
+SELECT '-- Test ngrams with nullable';
+SELECT ngrams(toNullable('ClickHouse'), 3);
 SELECT ngrams(CAST(NULL AS Nullable(String)), 3);
+SELECT ngrams(toNullable(NULL), 3); -- { serverError BAD_ARGUMENTS }
 
--- Test splitByChar with nullable
-SELECT splitByChar(',', CAST('a,b,c' AS Nullable(String)));
+SELECT '-- Test splitByChar with nullable';
+SELECT splitByChar(',', toNullable('a,b,c'));
 SELECT splitByChar(',', CAST(NULL AS Nullable(String)));
+SELECT splitByChar(',', toNullable(NULL)); -- { serverError ILLEGAL_TYPE_OF_ARGUMENT }
 
--- Test splitByNonAlpha with nullable
-SELECT splitByNonAlpha(CAST('hello, world! 123' AS Nullable(String)));
+SELECT '-- Test splitByNonAlpha with nullable';
+SELECT splitByNonAlpha(toNullable('hello, world! 123'));
 SELECT splitByNonAlpha(CAST(NULL AS Nullable(String)));
+SELECT splitByNonAlpha(toNullable(NULL)); -- { serverError ILLEGAL_TYPE_OF_ARGUMENT }
 
--- Test splitByRegexp with nullable
-SELECT splitByRegexp('[0-9]+', CAST('a1b2c3' AS Nullable(String)));
+SELECT '-- Test splitByRegexp with nullable';
+SELECT splitByRegexp('[0-9]+', toNullable('a1b2c3'));
 SELECT splitByRegexp('[0-9]+', CAST(NULL AS Nullable(String)));
+SELECT splitByRegexp('[0-9]+', toNullable(NULL)); -- { serverError ILLEGAL_TYPE_OF_ARGUMENT }
 
--- Test splitByString with nullable
-SELECT splitByString('||', CAST('a||b||c' AS Nullable(String)));
+SELECT '-- Test splitByString with nullable';
+SELECT splitByString('||', toNullable('a||b||c'));
 SELECT splitByString('||', CAST(NULL AS Nullable(String)));
+SELECT splitByString('||', toNullable(NULL)); -- { serverError ILLEGAL_TYPE_OF_ARGUMENT }
 
--- Test splitByWhitespace with nullable
-SELECT splitByWhitespace(CAST('hello   world  test' AS Nullable(String)));
+SELECT '-- Test splitByWhitespace with nullable';
+SELECT splitByWhitespace(toNullable('hello   world  test'));
 SELECT splitByWhitespace(CAST(NULL AS Nullable(String)));
+SELECT splitByWhitespace(toNullable(NULL)); -- { serverError ILLEGAL_TYPE_OF_ARGUMENT }

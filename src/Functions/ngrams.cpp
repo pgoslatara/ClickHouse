@@ -139,7 +139,7 @@ Splits a UTF-8 string into n-grams of length `N`.
 )";
     FunctionDocumentation::Syntax syntax = "ngrams(s, N)";
     FunctionDocumentation::Arguments arguments = {
-        {"s", "Input string.", {"String", "FixedString", "Nullable(String)", "Nullable(FixedString)"}},
+        {"s", "Input string.", {"String", "FixedString"}},
         {"N", "The n-gram length.", {"const UInt8/16/32/64"}}
     };
     FunctionDocumentation::ReturnedValue returned_value = {"Returns an array with n-grams.", {"Array(String)"}};
