@@ -379,5 +379,4 @@ void checkFunctionArgumentSizes(const ColumnsWithTypeAndName & arguments, size_t
                 current_size);
     }
 }
-
 }

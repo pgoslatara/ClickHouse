@@ -1,12 +1,16 @@
 #include <Columns/ColumnArray.h>
 #include <Columns/ColumnFixedString.h>
 #include <Columns/ColumnString.h>
+#include <Columns/ColumnNothing.h>
 #include <Columns/ColumnNullable.h>
+#include <Columns/IColumn.h>
 #include <DataTypes/DataTypeArray.h>
 #include <DataTypes/DataTypeString.h>
 #include <DataTypes/DataTypeNullable.h>
+#include <DataTypes/IDataType.h>
 #include <Functions/FunctionFactory.h>
 #include <Functions/FunctionHelpers.h>
+#include <Functions/FunctionTokens.h>
 #include <Functions/IFunction.h>
 #include <Interpreters/Context_fwd.h>
 #include <Interpreters/ITokenExtractor.h>
@@ -90,8 +94,8 @@ public:
     ColumnPtr executeImpl(const ColumnsWithTypeAndName & arguments, const DataTypePtr &, size_t input_rows_count) const override
     {
         auto col_input = arguments[arg_value].column;
-
         const NullMap * null_map = nullptr;
+
         if (const auto * col_nullable = checkAndGetColumn<ColumnNullable>(col_input.get()))
         {
             col_input = col_nullable->getNestedColumnPtr();
@@ -221,6 +225,23 @@ public:
             return isStringOrFixedString(type);
         };
 
+        auto is_string_nullable_string_or_nothing = [](const IDataType & type) {
+            if (isStringOrNullableString(type) || isNothing(type))
+                return true;
+            if (const auto * nullable_type = typeid_cast<const DataTypeNullable *>(&type))
+                return isNothing(nullable_type->getNestedType());
+            return false;
+        };
+
+        auto is_column_const_or_nullable_nothing = [](const IColumn & column) {
+            if (isColumnConst(column))
+                return true;
+            if (const auto * nullable_column = checkAndGetColumn<ColumnNullable>(&column))
+                if (checkAndGetColumn<ColumnNothing>(&nullable_column->getNestedColumn()) != nullptr)
+                    return true;
+            return false;
+        };
+
         FunctionArgumentDescriptors mandatory_args{
             {"value", is_string_or_fixed_string_nullable, nullptr, "String or FixedString"}};
 
@@ -228,7 +249,7 @@ public:
 
         if (arguments.size() > 1)
         {
-            optional_args.emplace_back("tokenizer", static_cast<FunctionArgumentDescriptor::TypeValidator>(&isString), isColumnConst, "String");
+            optional_args.emplace_back("tokenizer", is_string_nullable_string_or_nothing, is_column_const_or_nullable_nothing, "String");
             validateFunctionArguments(name, {arguments[arg_value], arguments[arg_tokenizer]}, mandatory_args, optional_args);
 
             if (arguments.size() == 3)

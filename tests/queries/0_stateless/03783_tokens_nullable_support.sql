@@ -25,10 +25,23 @@ SELECT arrayStringConcat([toNullable('hello'), toNullable('world')]);
 SELECT arrayStringConcat([toNullable('hello'), NULL, toNullable('world')]);
 SELECT arrayStringConcat([toNullable('hello'), NULL, toNullable('world')], ', ');
 
+SELECT '-- Test extractAllGroups with nullable';
+SELECT extractAllGroups(toNullable('abc=111, def=222'), '(\\w+)=(\\w+)');
+SELECT extractAllGroups(CAST(NULL AS Nullable(String)), '(\\w+)=(\\w+)');
+SELECT extractAllGroups(NULL, '(\\w+)=(\\w+)');
+SELECT extractAllGroups(toNullable(NULL), '(\\w+)=(\\w+)');
+
+SELECT '-- Test extractAllGroupsHorizontal with nullable';
+SELECT extractAllGroupsHorizontal(toNullable('abc=111, def=222'), '(\\w+)=(\\w+)');
+SELECT extractAllGroupsHorizontal(CAST(NULL AS Nullable(String)), '(\\w+)=(\\w+)');
+SELECT extractAllGroupsHorizontal(NULL, '(\\w+)=(\\w+)');
+SELECT extractAllGroupsHorizontal(toNullable(NULL), '(\\w+)=(\\w+)');
+
 SELECT '-- Test extractAllGroupsVertical with nullable';
 SELECT extractAllGroupsVertical(toNullable('abc=111, def=222'), '(\\w+)=(\\w+)');
 SELECT extractAllGroupsVertical(CAST(NULL AS Nullable(String)), '(\\w+)=(\\w+)');
-SELECT extractAllGroupsVertical(toNullable(NULL), '(\\w+)=(\\w+)'); -- { serverError ILLEGAL_TYPE_OF_ARGUMENT }
+SELECT extractAllGroupsVertical(NULL, '(\\w+)=(\\w+)');
+SELECT extractAllGroupsVertical(toNullable(NULL), '(\\w+)=(\\w+)');
 
 SELECT '-- Test ngrams with nullable';
 SELECT ngrams(toNullable('ClickHouse'), 3);

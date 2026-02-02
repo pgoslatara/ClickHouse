@@ -6,6 +6,7 @@
 #include <DataTypes/DataTypeArray.h>
 #include <DataTypes/DataTypeString.h>
 #include <DataTypes/DataTypeNullable.h>
+#include <DataTypes/IDataType.h>
 #include <Functions/FunctionHelpers.h>
 #include <Functions/IFunction.h>
 #include <Functions/Regexps.h>
@@ -80,7 +81,7 @@ public:
         auto is_string_or_fixed_string_nullable = [](const IDataType & type) -> bool
         {
             if (const auto * nullable = typeid_cast<const DataTypeNullable *>(&type))
-                return isStringOrFixedString(*nullable->getNestedType());
+                return isStringOrFixedString(*nullable->getNestedType()) || isNothing(*nullable->getNestedType());
             return isStringOrFixedString(type);
         };
 
@@ -106,12 +107,14 @@ public:
 
         ColumnPtr column_haystack = arguments[0].column;
         const ColumnPtr column_needle = arguments[1].column;
-
         const NullMap * null_map = nullptr;
+
         if (const auto * col_nullable = checkAndGetColumn<ColumnNullable>(column_haystack.get()))
         {
             column_haystack = col_nullable->getNestedColumnPtr();
-            null_map = &col_nullable->getNullMapData();
+            // preserve legacy behavior for NULL which is represented as Nothing and resulted in a call to ColumnNothing::getDataAt(size_t) which returns an empty string_view
+            if(!isNothing(column_haystack->getDataType()))
+                null_map = &col_nullable->getNullMapData();
         }
 
         const auto needle = typeid_cast<const ColumnConst &>(*column_needle).getValue<String>();

@@ -5,11 +5,8 @@
 #include <Columns/IColumn.h>
 #include <Columns/ColumnArray.h>
 #include <Columns/ColumnConst.h>
-#include <Columns/ColumnNullable.h>
 #include <Core/ColumnNumbers.h>
 #include <Core/ColumnsWithTypeAndName.h>
-
-#include <variant>
 
 namespace DB
 {
@@ -190,5 +187,4 @@ NullPresence getNullPresense(const ColumnsWithTypeAndName & args);
 bool isDecimalOrNullableDecimal(const DataTypePtr & type);
 
 void checkFunctionArgumentSizes(const ColumnsWithTypeAndName & arguments, size_t input_rows_count);
-
 }
