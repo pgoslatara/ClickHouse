@@ -228,14 +228,10 @@ QueryPlanOptimizationSettings::QueryPlanOptimizationSettings(
     max_parallel_replicas = from[Setting::max_parallel_replicas];
     automatic_parallel_replicas_mode = from[Setting::automatic_parallel_replicas_mode];
     automatic_parallel_replicas_min_bytes_per_replica = from[Setting::automatic_parallel_replicas_min_bytes_per_replica];
-<<<<<<< HEAD
 
     query_plan_optimize_primary_key = from[Setting::query_plan_optimize_primary_key];
-||||||| 78de9a4567d
-=======
 
     parallel_replicas_filter_pushdown = from[Setting::parallel_replicas_filter_pushdown];
->>>>>>> master
 }
 
 QueryPlanOptimizationSettings::QueryPlanOptimizationSettings(ContextPtr from)
