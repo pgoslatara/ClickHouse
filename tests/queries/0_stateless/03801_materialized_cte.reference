@@ -5,20 +5,14 @@ QUERY id: 0
     LIST id: 1, nodes: 1
       COLUMN id: 2, column_name: name, result_type: String, source_id: 3
   JOIN TREE
-    TABLE id: 3, alias: __table1, table_name: _temporary_and_external_tables._tmp_UNIQ_ID
-      MATERIALIZED CTE SUBQUERY
-        QUERY id: 4, alias: __table2, is_subquery: 1, is_cte: 1, is_materialized: 1, cte_name: a
-          PROJECTION COLUMNS
-            uid Int16
-            name String
-            age Int16
-          PROJECTION
-            LIST id: 5, nodes: 3
-              COLUMN id: 6, column_name: uid, result_type: Int16, source_id: 7
-              COLUMN id: 8, column_name: name, result_type: String, source_id: 7
-              COLUMN id: 9, column_name: age, result_type: Int16, source_id: 7
-          JOIN TREE
-            TABLE id: 7, alias: __table3, table_name: default.users
+    QUERY id: 3, alias: __table1, is_subquery: 1, is_cte: 1, is_materialized: 1, cte_name: a
+      PROJECTION COLUMNS
+        name String
+      PROJECTION
+        LIST id: 4, nodes: 1
+          COLUMN id: 5, column_name: name, result_type: String, source_id: 6
+      JOIN TREE
+        TABLE id: 6, alias: __table2, table_name: default.users
 QUERY id: 0
   PROJECTION COLUMNS
     count() UInt64

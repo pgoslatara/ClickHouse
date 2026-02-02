@@ -294,6 +294,8 @@ private:
 
     std::unordered_map<IQueryTreeNode *, QueryTreeNodePtr> cte_copy_to_original_map;
 
+    std::unordered_set<TemporaryTableHolderPtr> reused_materialized_cte;
+
     /// Function name to user defined lambda map
     std::unordered_map<std::string, QueryTreeNodePtr> function_name_to_user_defined_lambda;
 

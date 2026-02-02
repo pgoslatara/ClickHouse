@@ -35,6 +35,7 @@
 
 #include <Common/FieldVisitorToString.h>
 #include <Common/quoteString.h>
+#include <Analyzer/inlineMaterializedCTEIfNeeded.h>
 #include <Core/Settings.h>
 
 #include <DataTypes/DataTypesNumber.h>
@@ -195,6 +196,7 @@ void QueryAnalyzer::resolve(QueryTreeNodePtr & node, const QueryTreeNodePtr & ta
     }
 
     validateCorrelatedSubqueries(node);
+    inlineMaterializedCTEIfNeeded(node, reused_materialized_cte, context);
 }
 
 void QueryAnalyzer::resolveConstantExpression(QueryTreeNodePtr & node, const QueryTreeNodePtr & table_expression, ContextPtr context)
@@ -1389,7 +1391,7 @@ IdentifierResolveResult QueryAnalyzer::tryResolveIdentifier(const IdentifierLook
                 bool is_correlated = (query_node && query_node->isCorrelated()) || (union_node && union_node->isCorrelated());
                 if (is_correlated)
                     throw Exception(ErrorCodes::UNSUPPORTED_METHOD,
-                        "Materialized CTE '{}' cannot be correlated (enable 'allow_experimental_correlated_subqueries' setting to allow correlated subqueries execution). In scope {}",
+                        "Materialized CTE '{}' cannot be correlated. In scope {}",
                         full_name,
                         scope.scope_node->formatASTForErrorMessage());
 
@@ -1410,6 +1412,13 @@ IdentifierResolveResult QueryAnalyzer::tryResolveIdentifier(const IdentifierLook
                 auto table_node = std::make_shared<TableNode>(std::move(storage_holder), cte_node, scope.context);
 
                 cte_node = table_node;
+            }
+            else if (auto * table_node = cte_node->as<TableNode>())
+            {
+                if (table_node->isMaterializedCTE())
+                {
+                    reused_materialized_cte.insert(table_node->getTemporaryTableHolder());
+                }
             }
 
             resolve_result = { .resolved_identifier = cte_node, .resolve_place = IdentifierResolvePlace::CTE };
