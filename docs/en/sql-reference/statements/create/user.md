@@ -198,6 +198,10 @@ Examples:
 - ```CREATE USER name1 VALID UNTIL '2025-01-01 12:00:00 `Asia/Tokyo`'```
 - `CREATE USER name1 IDENTIFIED WITH plaintext_password BY 'no_expiration', bcrypt_password BY 'expiration_set' VALID UNTIL '2025-01-01''`
 
+:::note
+The expiration date specified by `VALID UNTIL` is not stored in the `system.users` table. You can view it after creating the user with `SHOW CREATE USER username`
+:::
+
 ## GRANTEES Clause {#grantees-clause}
 
 Specifies users or roles which are allowed to receive [privileges](../../../sql-reference/statements/grant.md#privileges) from this user on the condition this user has also all required access granted with [GRANT OPTION](../../../sql-reference/statements/grant.md#granting-privilege-syntax). Options of the `GRANTEES` clause:
