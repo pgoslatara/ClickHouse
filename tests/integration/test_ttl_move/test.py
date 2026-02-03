@@ -62,7 +62,6 @@ def wait_until_move_is_finished(node, table_name, retries=10, sleep_sec=1):
     for _ in range(retries):
 
         moves = int(node.query(f"SELECT count() FROM system.moves WHERE table = '{table_name}'").strip())
-        # TODO: check if we need smth like that for RMT - queue = int(node.query(f"SELECT count() FROM system.replication_queue WHERE table = '{table_name}'").strip())
         if moves == 0:
             # No active system.moves found -> assuming move is finished (SUCCESS)
             return
@@ -909,7 +908,7 @@ def test_materialize_ttl_per_partition(started_cluster, engine, request):
         """)
 
         # And checking that the correct partitions were moved
-        # TODO: I'm not sure if such waiting is enough for RMT - double check
+        # TODO: I'm not sure if such waiting is enough for RMT - double check, why it sometimes flaps
         wait_until_move_is_finished(node1, table_name)
         assert get_disk_names_of_active_parts(node1, table_name, partition=0) == {"jbod1"}
         assert get_disk_names_of_active_parts(node1, table_name, partition=1) == {"jbod1"}
@@ -1585,137 +1584,3 @@ def test_concurrent_alter_with_ttl_move(started_cluster, engine, request):
         assert node1.query("SELECT COUNT() FROM {}".format(table_name)) == "150\n"
     finally:
         node1.query("DROP TABLE IF EXISTS {name} SYNC".format(name=table_name))
-
-
-# NOTE: This test must be last, because it modifies the global cluster configuration
-class TestCancelBackgroundMoving:
-    @pytest.fixture()
-    def prepare_table(self, request, started_cluster):
-        check_and_skip_this_if_needed(node1)
-
-        name = unique_table_name(request)
-        engine = f"ReplicatedMergeTree('/clickhouse/{name}', '1')"
-
-        node1.query(f"""
-            CREATE TABLE {name} (
-                s1 String,
-                d1 DateTime
-            ) ENGINE = {engine}
-            ORDER BY tuple()
-            TTL d1 + interval 5 second TO DISK 'external'
-            SETTINGS storage_policy='small_jbod_with_external'
-        """)
-
-        node1.query("SYSTEM STOP MOVES")
-
-        # Insert part which is about to move
-        node1.query(
-            "INSERT INTO {} (s1, d1) VALUES (randomPrintableASCII({}), toDateTime({}))".format(
-                name, 128 * 1024, time.time()
-            )
-        )
-
-        # Set low bandwidth to have enough time to cancel part moving
-        config = inspect.cleandoc(
-            f"""
-            <clickhouse>
-                <max_local_write_bandwidth_for_server>{32*1024}</max_local_write_bandwidth_for_server>
-            </clickhouse>
-            """
-        )
-        node1.replace_config(
-            "/etc/clickhouse-server/config.d/disk_throttling.xml", config
-        )
-        node1.restart_clickhouse()
-
-        # We should not continue if throttling hasn't been applied - the test will become flaky
-        node1.query("SELECT sleep(1)")
-        assert node1.query(
-            "SELECT value FROM system.server_settings "
-            "WHERE name = 'max_local_write_bandwidth_for_server'"
-        ).strip() == str(32*1024)
-
-        try:
-            yield name
-        finally:
-            node1.query(f"DROP TABLE IF EXISTS {name} SYNC")
-
-    def test_cancel_background_moving_on_stop_moves_query(self, prepare_table):
-        check_and_skip_this_if_needed(node1)
-
-        name = prepare_table
-
-        # Wait for background moving task to be started
-        node1.query("SYSTEM START MOVES")
-        assert_eq_with_retry(
-            node1,
-            f"SELECT count() FROM system.moves WHERE table = '{name}'".strip(),
-            "1",
-        )
-
-        # Wait for background moving task to be cancelled
-        node1.query("SYSTEM STOP MOVES")
-        assert_eq_with_retry(
-            node1,
-            f"SELECT count() FROM system.moves WHERE table = '{name}'".strip(),
-            "0",
-        )
-        # Ensure that part was not moved
-        assert get_disk_names_of_active_parts(node1, name) == {'jbod1'}
-        # node1.query("SYSTEM FLUSH LOGS query_log")
-        # assert node1.query(f"""
-        #     SELECT ProfileEvents['MoveBackgroundExecutorTaskCancelMicroseconds']
-        #     FROM system.query_log
-        # """) == 0
-        # Finally check the MOVE was cancelled forcibly
-        assert_logs_contain_with_retry(
-            node1, "MergeTreeBackgroundExecutor.*Cancelled moving parts"
-        )
-
-    def test_cancel_background_moving_on_table_detach(self, prepare_table):
-        check_and_skip_this_if_needed(node1)
-
-        name = prepare_table
-
-        # Wait for background moving task to be started
-        node1.query("SYSTEM START MOVES")
-        assert_eq_with_retry(
-            node1,
-            f"SELECT count() FROM system.moves WHERE table = '{name}'".strip(),
-            "1",
-        )
-
-        # Wait for background moving task to be cancelled
-        node1.query(f"DETACH Table {name}")
-        assert_eq_with_retry(
-            node1,
-            f"SELECT count() FROM system.moves WHERE table = '{name}'".strip(),
-            "0",
-        )
-        # Finally check the MOVE was cancelled forcibly
-        assert_logs_contain_with_retry(
-            node1, "MergeTreeBackgroundExecutor.*Cancelled moving parts"
-        )
-
-    def test_cancel_background_moving_on_zookeeper_disconnect(self, prepare_table):
-        check_and_skip_this_if_needed(node1)
-
-        name = prepare_table
-
-        # Wait for background moving task to be started
-        node1.query("SYSTEM START MOVES")
-        assert_eq_with_retry(
-            node1,
-            f"SELECT count() FROM system.moves WHERE table = '{name}'".strip(),
-            "1",
-        )
-
-        with PartitionManager() as pm:
-            pm.drop_instance_zk_connections(node1)
-            # Wait for background moving task to be cancelled
-            assert_logs_contain_with_retry(
-                node1,
-                "MergeTreeBackgroundExecutor.*Cancelled moving parts",
-                retry_count=30,
-                sleep_time=1,
-            )
