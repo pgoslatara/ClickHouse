@@ -24,6 +24,14 @@ SELECT REGEXP_REPLACE(explain, '_temporary_and_external_tables._tmp_\\w+\\-\\w+\
     SELECT count() FROM a as l JOIN a as r ON l.uid = r.uid
 );
 
+SELECT REGEXP_REPLACE(explain, '_temporary_and_external_tables._tmp_\\w+\\-\\w+\\-\\w+\\-\\w+\\-\\w+', '_temporary_and_external_tables._tmp_UNIQ_ID') FROM
+(
+    EXPLAIN QUERY TREE
+    WITH
+    a AS MATERIALIZED (SELECT uid, count() FROM users GROUP BY uid, uid + 1)
+    SELECT count() FROM a as l JOIN a as r ON l.uid = r.uid
+);
+
 EXPLAIN header = 1
 WITH
 a AS MATERIALIZED (SELECT * FROM users)
