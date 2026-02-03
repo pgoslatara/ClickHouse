@@ -32,7 +32,7 @@ String formatReadableCost(ResourceCost cost, CostUnit unit)
     switch (unit)
     {
         case CostUnit::IOByte:        return formatReadableSizeWithBinarySuffix(cost);
-        case CostUnit::CPUNanosecond: return formatReadableTime(cost);
+        case CostUnit::CPUNanosecond: return formatReadableTime(static_cast<double>(cost));
         case CostUnit::QuerySlot:     return formatReadableQuantity(cost);
         case CostUnit::MemoryByte:    return formatReadableSizeWithBinarySuffix(cost);
     }
