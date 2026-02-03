@@ -25,6 +25,21 @@ def check():
     info = Info()
     Shell.check("find ./ci/tmp/build/programs -type f", verbose=True)
     if not info.pr_number and info.repo_name == "ClickHouse/ClickHouse":
+        # Handle ARM_UTILS build - upload utils to static location
+        if BuildTypes.ARM_UTILS in info.job_name:
+            print("Upload utils to static location")
+            try:
+                S3.copy_file_to_s3(
+                    local_path="./ci/tmp/build/src/Parsers/examples/parser_memory_profiler",
+                    s3_path=f"{S3_BUCKET_NAME}/{info.git_branch}/aarch64/parser_memory_profiler",
+                    with_rename=True,
+                )
+            except AssertionError:
+                raise
+            except Exception as e:
+                traceback.print_exc()
+            return
+
         for build_type, prefix in BUILD_TYPE_TO_STATIC_LOCATION.items():
             if build_type in info.job_name:
                 print("Upload builds to static location")

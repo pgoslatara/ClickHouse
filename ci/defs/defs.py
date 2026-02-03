@@ -318,6 +318,7 @@ class BuildTypes(metaclass=MetaClasses.WithIter):
     S390X = "s390x"
     LOONGARCH64 = "loongarch64"
     ARM_FUZZERS = "arm_fuzzers"
+    ARM_UTILS = "arm_utils"
 
 
 class JobNames:
@@ -415,6 +416,7 @@ class ArtifactNames:
 
     ARM_FUZZERS = "ARM_FUZZERS"
     FUZZERS_CORPUS = "FUZZERS_CORPUS"
+    ARM_UTILS = "ARM_UTILS"
 
 LLVM_FT_NUM_BATCHES = 3
 LLVM_IT_NUM_BATCHES = 5
@@ -544,4 +546,9 @@ class ArtifactConfigs:
         name=ArtifactNames.FUZZERS_CORPUS,
         type=Artifact.Type.S3,
         path=f"{TEMP_DIR}/build/programs/*_seed_corpus.zip",
+    )
+    utils = Artifact.Config(
+        name=ArtifactNames.ARM_UTILS,
+        type=Artifact.Type.S3,
+        path=f"{TEMP_DIR}/build/src/Parsers/examples/parser_memory_profiler",
     )

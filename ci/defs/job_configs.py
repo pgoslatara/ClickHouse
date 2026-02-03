@@ -351,6 +351,11 @@ class JobConfigs:
             provides=[],
             runs_on=RunnerLabels.ARM_LARGE,
         ),
+        Job.ParamSet(
+            parameter=BuildTypes.ARM_UTILS,
+            provides=[ArtifactNames.ARM_UTILS],
+            runs_on=RunnerLabels.ARM_LARGE,
+        ),
     )
     install_check_jobs = Job.Config(
         name=JobNames.INSTALL_TEST,
