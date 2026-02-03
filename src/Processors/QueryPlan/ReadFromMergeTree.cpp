@@ -2111,12 +2111,6 @@ ReadFromMergeTree::AnalysisResultPtr ReadFromMergeTree::selectRangesToRead(
     bool allow_query_condition_cache_,
     bool supports_skip_indexes_on_data_read)
 {
-    LOG_DEBUG(
-        &Poco::Logger::get("debug"),
-        "__PRETTY_FUNCTION__={}, __LINE__={}, stack={}",
-        __PRETTY_FUNCTION__,
-        __LINE__,
-        StackTrace().toString());
     ProfileEvents::increment(ProfileEvents::IndexAnalysisRounds);
 
     AnalysisResult result;

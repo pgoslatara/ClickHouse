@@ -363,7 +363,7 @@ static ReadFromMergeTree * findReadingStep(const QueryPlan::Node & top_of_single
 
 /// Heuristic-based algorithm to decide whether to enable parallel replicas for the given query
 void considerEnablingParallelReplicas(
-    const QueryPlanOptimizationSettings & optimization_settings, QueryPlan::Node & root, QueryPlan::Nodes &, QueryPlan & query_plan, bool &)
+    const QueryPlanOptimizationSettings & optimization_settings, QueryPlan::Node & root, QueryPlan::Nodes &, QueryPlan & query_plan)
 {
     LOG_DEBUG(&Poco::Logger::get("debug"), "__PRETTY_FUNCTION__={}, __LINE__={}", __PRETTY_FUNCTION__, __LINE__);
 
@@ -580,7 +580,7 @@ void considerEnablingParallelReplicas(
 
 
 void optimizeTreeSecondPass(
-    QueryPlanOptimizationSettings & optimization_settings, QueryPlan::Node & root, QueryPlan::Nodes & nodes, QueryPlan & query_plan)
+    const QueryPlanOptimizationSettings & optimization_settings, QueryPlan::Node & root, QueryPlan::Nodes & nodes, QueryPlan & query_plan)
 {
     const size_t max_optimizations_to_apply = optimization_settings.max_optimizations_to_apply;
     std::unordered_set<String> applied_projection_names;
@@ -898,7 +898,7 @@ void optimizeTreeSecondPass(
     if (optimization_settings.query_plan_join_shard_by_pk_ranges)
         optimizeJoinByShards(root);
 
-    considerEnablingParallelReplicas(optimization_settings, root, nodes, query_plan, optimization_settings.build_sets);
+    considerEnablingParallelReplicas(optimization_settings, root, nodes, query_plan);
 }
 
 void addStepsToBuildSets(

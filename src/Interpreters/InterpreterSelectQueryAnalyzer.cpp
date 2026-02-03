@@ -204,12 +204,12 @@ InterpreterSelectQueryAnalyzer::InterpreterSelectQueryAnalyzer(
               if (ctx->getClientInfo().query_kind == ClientInfo::QueryKind::SECONDARY_QUERY)
                   return QueryPlanPtr{};
               ctx->setSetting("enable_parallel_replicas", true);
+              // If the parallel replicas plan will be chosen, the index analysis result will be reused from the single-replica plan. No need to optimize primary key here.
               ctx->setSetting("query_plan_optimize_primary_key", false);
               InterpreterSelectQueryAnalyzer interpreter(ast, ctx, select_options, column_names);
               auto plan = std::move(interpreter).extractQueryPlan();
-              // TODO(nickitat): split optimization into two phases. First will do the minimum necessary to apply automatic parallel replicas,
-              // second will do the rest of optimizations, but only if the plan with parallel replicas was chosen.
               auto optimization_settings = QueryPlanOptimizationSettings(ctx);
+              // Same as for `query_plan_optimize_primary_key` above.
               optimization_settings.build_sets = false;
               plan.optimize(optimization_settings);
               return std::make_unique<QueryPlan>(std::move(plan));
@@ -253,10 +253,12 @@ InterpreterSelectQueryAnalyzer::InterpreterSelectQueryAnalyzer(
               if (ctx->getClientInfo().query_kind == ClientInfo::QueryKind::SECONDARY_QUERY)
                   return QueryPlanPtr{};
               ctx->setSetting("enable_parallel_replicas", true);
+              // If the parallel replicas plan will be chosen, the index analysis result will be reused from the single-replica plan. No need to optimize primary key here.
               ctx->setSetting("query_plan_optimize_primary_key", false);
               InterpreterSelectQueryAnalyzer interpreter(ast, ctx, storage, select_options, column_names);
               auto plan = std::move(interpreter).extractQueryPlan();
               auto optimization_settings = QueryPlanOptimizationSettings(ctx);
+              // Same as for `query_plan_optimize_primary_key` above.
               optimization_settings.build_sets = false;
               plan.optimize(optimization_settings);
               return std::make_unique<QueryPlan>(std::move(plan));
@@ -292,10 +294,12 @@ InterpreterSelectQueryAnalyzer::InterpreterSelectQueryAnalyzer(
               if (ctx->getClientInfo().query_kind == ClientInfo::QueryKind::SECONDARY_QUERY)
                   return QueryPlanPtr{};
               ctx->setSetting("enable_parallel_replicas", true);
+              // If the parallel replicas plan will be chosen, the index analysis result will be reused from the single-replica plan. No need to optimize primary key here.
               ctx->setSetting("query_plan_optimize_primary_key", false);
               InterpreterSelectQueryAnalyzer interpreter(tree, ctx, select_options);
               auto plan = std::move(interpreter).extractQueryPlan();
               auto optimization_settings = QueryPlanOptimizationSettings(ctx);
+              // Same as for `query_plan_optimize_primary_key` above.
               optimization_settings.build_sets = false;
               plan.optimize(optimization_settings);
               return std::make_unique<QueryPlan>(std::move(plan));
