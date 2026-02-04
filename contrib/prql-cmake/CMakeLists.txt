@@ -15,6 +15,11 @@ if (OS_FREEBSD)
     return()
 endif()
 
+if (NOT ENABLE_RUST)
+    message(STATUS "Not using prql (Rust is disabled)")
+    return()
+endif()
+
 option (ENABLE_PRQL "Enable prql" ${ENABLE_LIBRARIES})
 
 if (NOT ENABLE_PRQL)

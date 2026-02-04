@@ -13,6 +13,11 @@ if (OS_FREEBSD)
     return()
 endif()
 
+if (NOT ENABLE_RUST)
+    message(STATUS "Not using skim (Rust is disabled)")
+    return()
+endif()
+
 option (ENABLE_SKIM "Enable skim" ${ENABLE_LIBRARIES})
 
 if (NOT ENABLE_SKIM)
