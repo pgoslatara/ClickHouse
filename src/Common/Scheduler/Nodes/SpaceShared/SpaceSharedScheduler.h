@@ -79,6 +79,7 @@ public:
     {
         child = std::static_pointer_cast<ISpaceSharedNode>(child_);
         child->setParentNode(this);
+        child->updateMinMaxAllocated(min_max_allocated);
         propagateUpdate(*child, Update()
             .setAttached(child.get())
             .setIncrease(child->increase)
@@ -94,6 +95,7 @@ public:
             .setIncrease(nullptr)
             .setDecrease(nullptr));
         child->setParentNode(nullptr);
+        child->updateMinMaxAllocated(std::numeric_limits<ResourceCost>::max());
         child.reset();
     }
 
@@ -136,6 +138,13 @@ public:
     {
         chassert(false);
         return nullptr;
+    }
+
+    void updateMinMaxAllocated(ResourceCost new_value) override
+    {
+        min_max_allocated = new_value;
+        if (child)
+            child->updateMinMaxAllocated(min_max_allocated);
     }
 
 private:

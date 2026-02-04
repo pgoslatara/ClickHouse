@@ -31,6 +31,7 @@ void FairAllocation::attachChild(const std::shared_ptr<ISchedulerNode> & child_b
             "Can't add another child with the same path: {}",
             it->second->getPath());
     child->setParentNode(this);
+    child->updateMinMaxAllocated(min_max_allocated);
     child->setUsageKey(-1, 0); // force key update
     propagateUpdate(*child, Update()
         .setAttached(child.get())
@@ -49,6 +50,7 @@ void FairAllocation::removeChild(ISchedulerNode * child_base)
             .setDecrease(nullptr));
         child->setUsageKey(-1, 0); // do not leave garbage
         child->setParentNode(nullptr);
+        child->updateMinMaxAllocated(std::numeric_limits<ResourceCost>::max());
         children.erase(iter);
     }
 }
@@ -231,6 +233,13 @@ void FairAllocation::updateKey(ISpaceSharedNode & from_child, IncreaseRequest * 
         else if (from_child.allocated == 0)
             running_children.erase(running_children.iterator_to(from_child));
     }
+}
+
+void FairAllocation::updateMinMaxAllocated(ResourceCost new_value)
+{
+    min_max_allocated = new_value;
+    for (auto & [name, child] : children)
+        child->updateMinMaxAllocated(min_max_allocated);
 }
 
 }

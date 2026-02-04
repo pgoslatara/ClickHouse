@@ -30,6 +30,7 @@ void PrecedenceAllocation::attachChild(const std::shared_ptr<ISchedulerNode> & c
             "Can't add another child with the same path: {}",
             it->second->getPath());
     child->setParentNode(this);
+    child->updateMinMaxAllocated(min_max_allocated);
     propagateUpdate(*child, Update()
         .setAttached(child.get())
         .setIncrease(child->increase)
@@ -46,6 +47,7 @@ void PrecedenceAllocation::removeChild(ISchedulerNode * child_base)
             .setIncrease(nullptr)
             .setDecrease(nullptr));
         child->setParentNode(nullptr);
+        child->updateMinMaxAllocated(std::numeric_limits<ResourceCost>::max());
         children.erase(iter);
     }
 }
@@ -165,6 +167,13 @@ bool PrecedenceAllocation::setDecrease(ISpaceSharedNode & from_child, DecreaseRe
     decrease_child = decreasing_children.empty() ? nullptr : &*decreasing_children.begin();
     decrease = decrease_child ? decrease_child->decrease : nullptr;
     return old_decrease != decrease;
+}
+
+void PrecedenceAllocation::updateMinMaxAllocated(ResourceCost new_value)
+{
+    min_max_allocated = new_value;
+    for (auto & [name, child] : children)
+        child->updateMinMaxAllocated(min_max_allocated);
 }
 
 }

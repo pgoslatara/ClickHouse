@@ -36,6 +36,14 @@ public:
     IncreaseRequest * increase = nullptr;
     DecreaseRequest * decrease = nullptr;
 
+    /// Minimum of the limits on allocated resource for all parent nodes (AllocationLimit::max_allocated).
+    /// Required to reject impossible pending allocations and avoid infinite blocking.
+    ResourceCost min_max_allocated = std::numeric_limits<ResourceCost>::max();
+
+    /// Updates min_max_allocated and recursively propagates to children.
+    /// Called when a child is attached or when AllocationLimit::max_allocated changes.
+    virtual void updateMinMaxAllocated(ResourceCost new_value) = 0;
+
     struct Update
     {
         ISpaceSharedNode * attached = nullptr; /// Attached node (may be not an immediate child) or nullptr if no node attached
@@ -95,6 +103,7 @@ public:
     ///  A0 A1 A2 A3 A4 A5 A6 A7 A8 - ResourceAllocations
     ///    <-- killing order --
     virtual ResourceAllocation * selectAllocationToKill(IncreaseRequest & killer, ResourceCost limit, String & details) = 0;
+
     /// For parent only. Sets the usage key.
     void setUsageKey(double value, size_t tie_breaker)
     {

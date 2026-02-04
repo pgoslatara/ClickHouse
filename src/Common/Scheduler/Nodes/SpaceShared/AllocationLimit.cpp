@@ -27,6 +27,9 @@ AllocationLimit::~AllocationLimit()
 void AllocationLimit::updateLimit(UInt64 new_max_allocated)
 {
     max_allocated = new_max_allocated;
+    // Propagate new effective limit to children
+    if (child)
+        child->updateMinMaxAllocated(std::min(min_max_allocated, max_allocated));
     // WARNING: We do not force eviction here in cases there is no pending increase request to simplify logic.
     // WARNING: Eventually on the first increase request the limit will be applied.
     if (setIncrease(child->increase, true))
@@ -48,6 +51,7 @@ void AllocationLimit::attachChild(const std::shared_ptr<ISchedulerNode> & child_
 {
     child = std::static_pointer_cast<ISpaceSharedNode>(child_);
     child->setParentNode(this);
+    child->updateMinMaxAllocated(std::min(min_max_allocated, max_allocated));
     propagateUpdate(*child, Update()
         .setAttached(child.get())
         .setIncrease(child->increase)
@@ -63,6 +67,7 @@ void AllocationLimit::removeChild(ISchedulerNode * child_)
         .setIncrease(nullptr)
         .setDecrease(nullptr));
     child->setParentNode(nullptr);
+    child->updateMinMaxAllocated(std::numeric_limits<ResourceCost>::max());
     child.reset();
 }
 
@@ -188,6 +193,13 @@ bool AllocationLimit::setDecrease(DecreaseRequest * new_decrease)
         return false;
     decrease = new_decrease;
     return true;
+}
+
+void AllocationLimit::updateMinMaxAllocated(ResourceCost new_value)
+{
+    min_max_allocated = new_value;
+    if (child)
+        child->updateMinMaxAllocated(std::min(min_max_allocated, max_allocated));
 }
 
 }

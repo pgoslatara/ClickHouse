@@ -27,6 +27,7 @@ public:
     void approveIncrease() override;
     void approveDecrease() override;
     void propagateUpdate(ISpaceSharedNode & from_child, Update && update) override;
+    void updateMinMaxAllocated(ResourceCost new_value) override;
 
 private:
     bool setIncrease(IncreaseRequest * new_increase, bool reapply_constraint);

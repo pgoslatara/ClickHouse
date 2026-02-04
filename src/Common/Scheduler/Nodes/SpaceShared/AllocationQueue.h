@@ -38,6 +38,7 @@ public:
     void attachChild(const SchedulerNodePtr &) override;
     void removeChild(ISchedulerNode *) override;
     ISchedulerNode * getChild(const String &) override;
+    void updateMinMaxAllocated(ResourceCost new_value) override;
     std::pair<UInt64, Int64> getQueueLengthAndSize();
     void updateQueueLimit(Int64 value);
 

@@ -851,6 +851,7 @@ private:
     {
         child = std::static_pointer_cast<ISpaceSharedNode>(child_);
         child->setParentNode(this);
+        child->updateMinMaxAllocated(min_max_allocated);
         propagateUpdate(*child, Update()
             .setAttached(child.get())
             .setIncrease(child->increase)
@@ -867,6 +868,7 @@ private:
             .setIncrease(nullptr)
             .setDecrease(nullptr));
         child->setParentNode(nullptr);
+        child->updateMinMaxAllocated(std::numeric_limits<ResourceCost>::max());
         child.reset();
     }
 
@@ -923,6 +925,13 @@ private:
                 .setIncrease(increase)
                 .setDecrease(decrease));
         }
+    }
+
+    void updateMinMaxAllocated(ResourceCost new_value) override
+    {
+        min_max_allocated = new_value;
+        if (child)
+            child->updateMinMaxAllocated(min_max_allocated);
     }
 
     SpaceSharedNodePtr child; // An immediate child (actually the root of the whole subtree)

@@ -13,6 +13,7 @@ namespace ErrorCodes
 {
     extern const int BAD_ARGUMENTS;
     extern const int INVALID_SCHEDULER_NODE;
+    extern const int RESOURCE_LIMIT_EXCEEDED;
     extern const int SERVER_OVERLOADED;
     extern const int QUERY_WAS_CANCELLED;
 }
@@ -44,6 +45,13 @@ void AllocationQueue::insertAllocation(ResourceAllocation & allocation, Resource
     if (initial_size < 0)
         throw Exception(ErrorCodes::BAD_ARGUMENTS,
             "Negative allocation is not allowed: {}", initial_size);
+    if (initial_size > min_max_allocated)
+    {
+        ++rejects;
+        throw Exception(ErrorCodes::RESOURCE_LIMIT_EXCEEDED,
+            "Workload '{}' allocation of size {} exceeds the limit of {}",
+            getWorkloadName(), formatReadableCost(initial_size), formatReadableCost(min_max_allocated));
+    }
     if (initial_size > 0 && max_queued >= 0 && pending_allocations.size() >= static_cast<size_t>(max_queued))
     {
         ++rejects;
@@ -144,6 +152,33 @@ void AllocationQueue::purgeQueue()
 void AllocationQueue::propagateUpdate(ISpaceSharedNode &, Update &&)
 {
     chassert(false);
+}
+
+void AllocationQueue::updateMinMaxAllocated(ResourceCost new_value)
+{
+    std::lock_guard lock(mutex);
+    min_max_allocated = new_value;
+
+    // Reject pending allocations that can never succeed because they exceed the new limit
+    for (auto it = pending_allocations.begin(); it != pending_allocations.end(); )
+    {
+        ResourceAllocation & allocation = *it;
+        ++it; // Advance before erasing
+        if (allocation.increase.size > min_max_allocated)
+        {
+            pending_allocations.erase(pending_allocations.iterator_to(allocation));
+            pending_allocations_size -= allocation.increase.size;
+            ++rejects;
+            allocation.allocationFailed(std::make_exception_ptr(
+                Exception(ErrorCodes::RESOURCE_LIMIT_EXCEEDED,
+                    "Workload '{}' allocation of size {} exceeds the limit of {}",
+                    getWorkloadName(), formatReadableCost(allocation.increase.size), formatReadableCost(min_max_allocated))));
+        }
+    }
+
+    // Update increase pointer in case the removed allocation was the current one
+    if (setIncrease() && parent)
+        propagate(Update().setIncrease(increase));
 }
 
 void AllocationQueue::approveIncrease()
@@ -313,6 +348,10 @@ void AllocationQueue::updateQueueLimit(Int64 value)
                 getWorkloadName(), pending_allocations.size(), max_queued)));
         ++rejects;
     }
+
+    // Update increase pointer in case the removed allocation was the current one
+    if (setIncrease() && parent)
+        propagate(Update().setIncrease(increase));
 }
 
 bool AllocationQueue::setIncrease() // TSA_REQUIRES(mutex)
